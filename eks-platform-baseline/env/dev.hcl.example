@@ -1,0 +1,11 @@
+# Backend config for the dev workspace.
+# Copy to env/dev.hcl and fill in — dev.hcl is in .gitignore.
+#
+# Pre-create the bucket + DynamoDB table in a bootstrap workspace (not in
+# this repo), then point this file at them.
+
+bucket         = "YOUR_STATE_BUCKET"
+key            = "eks-platform-baseline/dev/terraform.tfstate"
+region         = "eu-west-2"
+dynamodb_table = "YOUR_STATE_LOCK_TABLE"
+encrypt        = true

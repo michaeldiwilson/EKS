@@ -1,0 +1,38 @@
+# EC2NodeClass
+#
+# Shape of the actual EC2 instance Karpenter launches: AMI family, subnets,
+# security groups. All discovery is tag-based (`karpenter.sh/discovery`),
+# which keeps this manifest env-agnostic.
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: default
+spec:
+  amiFamily: AL2023
+  amiSelectorTerms:
+    - alias: al2023@latest
+
+  # Tag-based subnet discovery. The VPC module tags private subnets with
+  # `karpenter.sh/discovery = <cluster_name>`.
+  subnetSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: baseline
+
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: baseline
+
+  # Encrypted root volume. gp3 over gp2 — same price for higher baseline
+  # IOPS.
+  blockDeviceMappings:
+    - deviceName: /dev/xvda
+      ebs:
+        volumeSize: 50Gi
+        volumeType: gp3
+        encrypted: true
+
+  # IMDSv2 only. Legacy IMDSv1 lets a compromised pod lift node credentials
+  # trivially.
+  metadataOptions:
+    httpTokens: required
+    httpPutResponseHopLimit: 2

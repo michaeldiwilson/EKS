@@ -1,0 +1,50 @@
+# NodePool
+#
+# Policy for what Karpenter is allowed to launch and when it may consolidate.
+#
+# Spot + on-demand mix, limited to common x86 families to keep instance
+# selection predictable. The consolidation policy is deliberately
+# WhenEmptyOrUnderutilized — WhenEmpty alone leaves half-full nodes running
+# forever, which is the single biggest EKS cost footgun.
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: general
+spec:
+  template:
+    metadata:
+      labels:
+        pool: general
+    spec:
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind: EC2NodeClass
+        name: default
+
+      requirements:
+        - key: karpenter.k8s.aws/instance-category
+          operator: In
+          values: ["c", "m", "r"]
+        - key: karpenter.k8s.aws/instance-generation
+          operator: Gt
+          values: ["5"]
+        - key: karpenter.k8s.aws/instance-size
+          operator: In
+          values: ["medium", "large", "xlarge", "2xlarge"]
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["on-demand", "spot"]
+        - key: kubernetes.io/arch
+          operator: In
+          values: ["amd64"]
+
+      expireAfter: 720h  # cycle nodes weekly, forces upgrades through naturally
+
+  limits:
+    cpu: "100"
+
+  disruption:
+    consolidationPolicy: WhenEmptyOrUnderutilized
+    consolidateAfter: 1m
+    budgets:
+      - nodes: "20%"      # never disrupt more than 20% at once
